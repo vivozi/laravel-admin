@@ -5,6 +5,7 @@ namespace Encore\Admin\Form;
 use Closure;
 use Encore\Admin\Admin;
 use Encore\Admin\Form;
+use Encore\Admin\Widgets\Form as WidgetForm;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Arr;
@@ -169,7 +170,7 @@ class Field implements Renderable
     /**
      * Parent form.
      *
-     * @var Form
+     * @var Form|WidgetForm
      */
     protected $form = null;
 
@@ -459,6 +460,20 @@ class Field implements Renderable
     }
 
     /**
+     * Set Widget/Form as field parent.
+     *
+     * @param WidgetForm $form
+     *
+     * @return $this
+     */
+    public function setWidgetForm(WidgetForm $form)
+    {
+        $this->form = $form;
+
+        return $this;
+    }
+
+    /**
      * Set width for field and label.
      *
      * @param int $field
@@ -704,7 +719,7 @@ class Field implements Renderable
             $rules = array_filter(explode('|', $rules));
         }
 
-        if (!$this->form) {
+        if (!$this->form || !$this->form instanceof Form) {
             return $rules;
         }
 
@@ -1096,6 +1111,18 @@ class Field implements Renderable
     }
 
     /**
+     * Add a divider after this field.
+     *
+     * @return $this
+     */
+    public function divider()
+    {
+        $this->form->divider();
+
+        return $this;
+    }
+
+    /**
      * Prepare for a field value before update or insert.
      *
      * @param $value
@@ -1184,7 +1211,7 @@ class Field implements Renderable
      *
      * @return mixed
      */
-    protected function getElementClassString()
+    public function getElementClassString()
     {
         $elementClass = $this->getElementClass();
 
@@ -1206,7 +1233,7 @@ class Field implements Renderable
      *
      * @return string|array
      */
-    protected function getElementClassSelector()
+    public function getElementClassSelector()
     {
         $elementClass = $this->getElementClass();
 
@@ -1317,7 +1344,7 @@ class Field implements Renderable
      *
      * @return $this
      */
-    protected function addVariables(array $variables = []): self
+    public function addVariables(array $variables = []): self
     {
         $this->variables = array_merge($this->variables, $variables);
 
@@ -1334,12 +1361,13 @@ class Field implements Renderable
 
     /**
      * @param array $labelClass
+     * @param bool  $replace
      *
      * @return self
      */
-    public function setLabelClass(array $labelClass): self
+    public function setLabelClass(array $labelClass, $replace = false): self
     {
-        $this->labelClass = $labelClass;
+        $this->labelClass = $replace ? $labelClass : array_merge($this->labelClass, $labelClass);
 
         return $this;
     }
@@ -1479,7 +1507,19 @@ class Field implements Renderable
 
         Admin::script($this->script);
 
-        return view($this->getView(), $this->variables());
+        return Admin::component($this->getView(), $this->variables());
+    }
+
+    /**
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View|string
+     */
+    protected function fieldRender(array $variables = [])
+    {
+        if (!empty($variables)) {
+            $this->addVariables($variables);
+        }
+
+        return self::render();
     }
 
     /**

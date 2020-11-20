@@ -11,6 +11,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
 
 class Field implements Renderable
@@ -399,7 +400,11 @@ HTML;
         $field = $this;
 
         return $this->unescape()->as(function ($value) use ($field) {
-            $content = json_decode($value, true);
+            if (is_string($value)) {
+                $content = json_decode($value, true);
+            } else {
+                $content = $value;
+            }
 
             if (json_last_error() == 0) {
                 $field->border = false;
@@ -483,7 +488,11 @@ HTML;
 
             $this->value = $relationValue;
         } else {
-            $this->value = $model->getAttribute($this->name);
+            if (Str::contains($this->name, '.')) {
+                $this->value = $this->getRelationValue($model, $this->name);
+            } else {
+                $this->value = $model->getAttribute($this->name);
+            }
         }
 
         return $this;
@@ -501,6 +510,21 @@ HTML;
         $this->relation = $relation;
 
         return $this;
+    }
+
+    /**
+     * @param Model  $model
+     * @param string $name
+     *
+     * @return mixed
+     */
+    protected function getRelationValue($model, $name)
+    {
+        list($relation, $key) = explode('.', $name);
+
+        if ($related = $model->getRelationValue($relation)) {
+            return $related->getAttribute($key);
+        }
     }
 
     /**
